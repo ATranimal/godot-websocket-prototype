@@ -14,7 +14,7 @@ func _ready():
     # Connect base signals to get notified of connection open, close, and errors.
     _client.connect("connection_closed", self, "_closed")
     _client.connect("connection_error", self, "_closed")
-    _client.connect("connection_established", self, "_connected")
+    _client.connect("connection_established", self, "_connected")   
     # This signal is emitted when not using the Multiplayer API every time
     # a full packet is received.
     # Alternatively, you could check get_peer(1).get_available_packets() in a loop.
@@ -27,12 +27,17 @@ func _closed(was_clean = false):
     set_process(false)
 
 func _connected(proto = ""):
-    # This is called on connection, "proto" will be the selected WebSocket
-    # sub-protocol (which is optional)
     print("Connected with protocol: ", proto)
-    # You MUST always use get_peer(1).put_packet to send data to server,
-    # and not put_packet directly when not using the MultiplayerAPI.
-    _client.get_peer(1).put_packet("Test packet".to_utf8())
+    is_connected = true
+    $Button.text = "Start Game"
+
+    var test_dict = {
+        "msgCode": "0",
+        "value": {
+            "test": "test"
+        }
+    }
+    _client.get_peer(1).put_packet(JSON.print(test_dict).to_utf8())
 
 func _on_data():
     # Print the received packet, you MUST always use get_peer(1).get_packet
@@ -41,8 +46,7 @@ func _on_data():
     print("Got data from server: ", _client.get_peer(1).get_packet().get_string_from_utf8())
 
 func _process(delta):
-    if is_connected:
-        _client.poll()
+    _client.poll()
 
 func _on_Button_pressed():
     if !is_connected:
@@ -53,8 +57,6 @@ func _attempt_connection():
 
     var err = _client.connect_to_url(websocket_url)
     if err != OK:
+        print(err)
         print("Unable to connect")
         set_process(false)
-    else: 
-        is_connected = true
-        $Button.text = "Start Game"

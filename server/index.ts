@@ -41,7 +41,8 @@ async function handleWs(sock: WebSocket) {
         await sock.send(ev);
       } else if (ev instanceof Uint8Array) {
         // binary message.
-        console.log("ws:Binary", ev);
+        const JSONMessage = decodeJSONMessage(ev);
+        console.log("ws:Binary", JSONMessage);
       } else if (isWebSocketPingEvent(ev)) {
         const [, body] = ev;
         // ping.
@@ -60,6 +61,14 @@ async function handleWs(sock: WebSocket) {
     }
   }
 }
+
+const decodeJSONMessage = (ev: Uint8Array): any => {
+  const utf8decoder = new TextDecoder();
+
+  const str = utf8decoder.decode(ev);
+
+  return JSON.parse(str);
+};
 
 if (import.meta.main) {
   /** websocket echo server */
