@@ -9,6 +9,7 @@ var world_scene = preload("res://World.tscn");
 var _client = WebSocketClient.new()
 
 var is_connected = false;
+var is_ready = false;
 
 func _ready():
     # Connect base signals to get notified of connection open, close, and errors.
@@ -29,21 +30,18 @@ func _closed(was_clean = false):
 func _connected(proto = ""):
     print("Connected with protocol: ", proto)
     is_connected = true
-    $Button.text = "Start Game"
+    $Button.text = "Ready Game"
 
-    var test_dict = {
-        "msgCode": "0",
-        "value": {
-            "test": "test"
-        }
-    }
-    _client.get_peer(1).put_packet(JSON.print(test_dict).to_utf8())
+    # _client.get_peer(1).put_packet(JSON.print(test_dict).to_utf8())
 
 func _on_data():
-    # Print the received packet, you MUST always use get_peer(1).get_packet
-    # to receive data from server, and not get_packet directly when not
-    # using the MultiplayerAPI.
-    print("Got data from server: ", _client.get_peer(1).get_packet().get_string_from_utf8())
+    var packet = _client.get_peer(1).get_packet().get_string_from_utf8()
+    
+    if packet == "playerReady":
+        $Button.text = "Start Game"
+        is_ready = true
+    elif packet == "startGame":
+        $Button.text = "Game Started"
 
 func _process(delta):
     _client.poll()
@@ -51,6 +49,20 @@ func _process(delta):
 func _on_Button_pressed():
     if !is_connected:
         _attempt_connection()
+    else: 
+        if !is_ready:
+            _msg({
+                "eventName": "playerReady",
+                "body": null
+            })
+        else:
+             _msg({
+                "eventName": "startGame",
+                "body": null
+            })
+            
+func _msg(event: Dictionary):
+    _client.get_peer(1).put_packet(JSON.print(event).to_utf8())
 
 func _attempt_connection():
     _client.connect("data_received", self, "_on_data")

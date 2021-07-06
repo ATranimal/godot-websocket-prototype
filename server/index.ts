@@ -6,6 +6,7 @@ import {
   isWebSocketPingEvent,
   WebSocket,
 } from "https://deno.land/std@0.100.0/ws/mod.ts";
+import { decodeJSONMessage, handleEventMessagePacket } from "./event.ts";
 import { Map } from "./models/Map.ts";
 
 interface GameState {
@@ -38,11 +39,9 @@ async function handleWs(sock: WebSocket) {
       if (typeof ev === "string") {
         // text message.
         console.log("ws:Text", ev);
-        await sock.send(ev);
+        console.log("string received, unexpected");
       } else if (ev instanceof Uint8Array) {
-        // binary message.
-        const JSONMessage = decodeJSONMessage(ev);
-        console.log("ws:Binary", JSONMessage);
+        handleBinaryMessage(ev, sock);
       } else if (isWebSocketPingEvent(ev)) {
         const [, body] = ev;
         // ping.
@@ -62,12 +61,14 @@ async function handleWs(sock: WebSocket) {
   }
 }
 
-const decodeJSONMessage = (ev: Uint8Array): any => {
-  const utf8decoder = new TextDecoder();
-
-  const str = utf8decoder.decode(ev);
-
-  return JSON.parse(str);
+const handleBinaryMessage = (ev: Uint8Array, sock: WebSocket) => {
+  const eventMessagePacket = decodeJSONMessage(ev);
+  if (eventMessagePacket) {
+    console.log("ws:Binary", eventMessagePacket.eventName);
+    handleEventMessagePacket(eventMessagePacket, sock);
+  } else {
+    console.log("Event received not in event format");
+  }
 };
 
 if (import.meta.main) {
